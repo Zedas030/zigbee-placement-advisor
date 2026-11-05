@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}{{ d.row.name }} – {{ t('app_title') }}{% endblock %}
+{% block main %}
+<section class="card">
+  <h2>{{ d.row.name }}</h2>
+  {% set r = d.row_view %}
+  <p>{{ r.room if r else d.row.area }} · {{ r.type if r else d.row.device_type }} · {{ d.row.power_source }} · {{ d.row.manufacturer }} {{ d.row.model }}</p>
+  {% if r %}<p><span class="dot dot-{{ r.cls }}"></span>{{ r.state }} · {{ t('col_lqi_median') }} {{ r.median if r.median is not none else '–' }} · {{ t('col_outages') }} {{ r.outages }} · {{ t('col_parent_changes') }} {{ r.parent_changes }}{% if r.parent %} · {{ t('col_parent') }}: {{ r.parent }}{% endif %}</p>{% endif %}
+  <h3>{{ t('lqi_over_time') }}</h3>
+  <p class="ranges">{{ t('range') }}:
+    {% for n in ranges %}<a href="?days={{ n }}" {% if n == d.days %}aria-current="page"{% endif %}>{{ t('days_n', n=n) }}</a>{% endfor %}
+  </p>
+  {{ d.chart }}
+  <p class="muted small"><span class="legend outage"></span>{{ t('legend_outage') }} <span class="legend sysevent"></span>{{ t('system_event') }} <span class="legend threshold"></span>{{ t('legend_weak') }}</p>
+</section>
+<div class="layout">
+  <section class="card col-main">
+    <h2>{{ t('links') }}</h2>
+    {% if d.links %}
+    <table class="small"><thead><tr><th>{{ t('col_neighbor') }}</th><th class="num">LQI</th><th>{{ t('col_relationship') }}</th></tr></thead>
+    <tbody>{% for l in d.links %}<tr><td>{{ l.name }}</td><td class="num">{{ l.lqi }}</td><td>{{ l.relationship }}</td></tr>{% endfor %}</tbody></table>
+    {% else %}<p class="muted">–</p>{% endif %}
+  </section>
+  <section class="card col-side">
+    <h2>{{ t('outage_list') }}</h2>
+    {% if d.outages %}
+    <ul>{% for o in d.outages[:50] %}<li{% if not o.real %} class="muted"{% endif %}>{{ o.start }} → {{ o.end }} ({{ o.minutes }} min){% if not o.real %} – {{ t('system_event') }}{% endif %}</li>{% endfor %}</ul>
+    {% else %}<p class="muted">{{ t('no_outages') }}</p>{% endif %}
+  </section>
+</div>
+{% endblock %}

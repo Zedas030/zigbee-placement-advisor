@@ -1,0 +1,106 @@
+# Zigbee Placement Advisor – configuration
+# Copy to config/config.yaml and adjust. Every key is optional; missing keys use the defaults shown here.
+# Secrets do NOT belong here: the Home Assistant token goes into .env (HA_TOKEN=...), see README "Secrets".
+
+# Language of the web UI, reports and notifications: en or de
+language: en
+# Time zone for the weekly schedule, daily statistics and all displayed times
+timezone: Europe/Paris
+
+# Data source. Only "zha" (Home Assistant ZHA) exists today; the code has a Source interface
+# (zpa/sources/base.py) so Zigbee2MQTT can be added as a second module later.
+source: zha
+
+# Where the SQLite database and HTML reports are stored (inside the container)
+data_dir: /data
+
+home_assistant:
+  # The container runs with host networking, so localhost is the Docker host.
+  url: http://localhost:8123
+  verify_ssl: true
+  timeout_seconds: 30
+
+collector:
+  # How often the tool reads the ZHA topology cache. Reading is free (no radio traffic):
+  # ZHA/zigpy itself rescans all neighbor tables every 4 h, and LQI/RSSI/last_seen update
+  # with every frame. 30 min catches each topology scan and device traffic without
+  # filling the database. Allowed: 5..1440.
+  interval_minutes: 30
+  # On first start, read this many days of availability history from the HA recorder
+  # (HA keeps 10 days by default).
+  history_backfill_days: 10
+
+web:
+  host: 0.0.0.0
+  port: 8099
+  # Address used in notification links (how you reach the UI from your phone)
+  public_url: http://advisor.example.local:8099
+
+notify:
+  # Home Assistant notify services WITHOUT the "notify." prefix, e.g. mobile_app_phone.
+  # Empty list = no notifications.
+  services:
+    - mobile_app_phone
+  weekly_report:
+    enabled: true
+    weekday: sunday   # monday .. sunday
+    time: "18:00"     # local time, HH:MM
+  incidents: true       # self-monitoring problems (HA unreachable, ZHA API changed, ...)
+  before_after: true    # result of the automatic before/after comparison
+
+wifi:
+  # Where to get the 2.4 GHz Wi-Fi channel for the overlap check:
+  #   fritz_exporter – read the Prometheus metric of a running fritz_exporter (no router password needed here)
+  #   manual         – use manual_channel
+  #   none           – skip the Wi-Fi side of the check
+  source: fritz_exporter
+  exporter_url: http://localhost:9787/metrics
+  metric: fritz_wifi_channel
+  band_label: 2.4GHz
+  manual_channel: null
+
+thresholds:
+  # Days looked at for "weak device" decisions and the recommendation
+  analysis_window_days: 14
+  # A device is weak if ANY of these is true over the window:
+  weak_lqi_median: 80               # median LQI below this
+  weak_outages_per_week: 2          # at least this many real outages per week
+  weak_parent_changes_per_week: 3   # at least this many parent changes per week (end devices)
+  # A router counts as a good "anchor" for a new router if its median LQI is at least this
+  anchor_min_lqi: 150
+  # Outages shorter than this are ignored (seconds)
+  min_outage_seconds: 60
+  # If at least this fraction of all devices goes unavailable within this many seconds,
+  # it is a Home Assistant/ZHA restart, not a device problem.
+  outage_mass_window_seconds: 120
+  outage_mass_fraction: 0.8
+
+recommendation:
+  # Below these values the tool says "not enough data" instead of guessing
+  min_days: 7
+  min_measurements: 100
+  min_devices: 5            # including the coordinator
+  # A weak device counts as "stabilised" by a room if the estimated chance is at least this
+  stabilize_probability: 0.5
+  # Data age at which the data part of the confidence reaches 100 %
+  days_for_full_confidence: 21
+
+before_after:
+  # When a new router joins, compare this many days after it (after a settling period)
+  # with the days before it.
+  after_days: 7
+  before_days: 14
+  settle_hours: 24
+  min_samples: 20           # measurements per device needed after the change
+  lqi_improvement: 15       # LQI gain that counts as "better"
+
+retention:
+  raw_days: 180             # raw measurements, neighbor tables, outages
+  daily_days: 730           # daily medians per device (for long charts)
+  reports_keep: 104         # weekly HTML reports
+
+monitoring:
+  # Alert when Home Assistant has been unreachable for this many collection cycles in a row
+  failure_cycles_before_alert: 2
+  # Alert when no Zigbee device has sent anything for this long (minutes)
+  stale_minutes: 180

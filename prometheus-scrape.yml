@@ -1,0 +1,6 @@
+# Add to scrape_configs in prometheus.yml
+  - job_name: zigbee_placement_advisor
+    scrape_interval: 60s
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['localhost:8099']

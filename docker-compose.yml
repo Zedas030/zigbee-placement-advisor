@@ -1,0 +1,30 @@
+services:
+  zigbee-placement-advisor:
+    build:
+      context: .
+      target: runtime
+    image: zigbee-placement-advisor:1.0.0
+    container_name: zigbee-placement-advisor
+    restart: unless-stopped          # starts again after reboots and crashes
+    network_mode: host               # reaches Home Assistant/fritz_exporter on localhost; serves :8099
+    env_file: .env                   # HA_TOKEN (chmod 600)
+    volumes:
+      - ./config:/config:ro          # config.yaml
+      - ./data:/data                 # SQLite database + weekly reports (owned by uid 10001)
+      - /etc/localtime:/etc/localtime:ro
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    mem_limit: 256m
+    memswap_limit: 256m
+    cpus: 0.5
+    pids_limit: 64
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

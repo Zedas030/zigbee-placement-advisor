@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="{{ lang }}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}{{ t('app_title') }}{% endblock %}</title>
+<link rel="stylesheet" href="/static/style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><circle cx='8' cy='8' r='3' fill='%232f7d5b'/><circle cx='8' cy='8' r='6.5' fill='none' stroke='%232f7d5b' stroke-width='1.5'/></svg>">
+</head>
+<body>
+<header class="top">
+  <div class="brand">{{ t('app_title') }}</div>
+  <nav>
+    <a href="/" {% if page == 'overview.html' %}aria-current="page"{% endif %}>{{ t('nav_overview') }}</a>
+    <a href="/devices" {% if page in ('devices.html', 'device.html') %}aria-current="page"{% endif %}>{{ t('nav_devices') }}</a>
+    <a href="/setup" {% if page == 'setup.html' %}aria-current="page"{% endif %}>{{ t('nav_rooms') }}</a>
+    <a href="/reports" {% if page == 'reports.html' %}aria-current="page"{% endif %}>{{ t('nav_reports') }}</a>
+  </nav>
+</header>
+<main>
+{% block main %}{% endblock %}
+</main>
+<footer class="muted">{{ t('observe_only') }}</footer>
+{% block scripts %}{% endblock %}
+</body>
+</html>

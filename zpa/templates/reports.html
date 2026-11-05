@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}{{ t('reports_title') }} – {{ t('app_title') }}{% endblock %}
+{% block main %}
+<section class="card">
+  <h2>{{ t('reports_title') }}</h2>
+  <form method="post" action="/reports/now"><button class="button" type="submit">{{ t('report_now') }}</button></form>
+  {% if not rows %}<p class="muted">{{ t('report_none') }}</p>{% endif %}
+  <ul class="reports">
+  {% for r in rows %}
+    <li><a href="/reports/{{ r.week }}">{{ t('report_week', week=r.week) }}</a> <span class="muted">{{ t('report_generated', when=r.when) }}</span><br>{{ r.summary }}</li>
+  {% endfor %}
+  </ul>
+</section>
+{% endblock %}

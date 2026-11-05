@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}{{ t('setup_title') }} – {{ t('app_title') }}{% endblock %}
+{% block main %}
+<section class="card">
+  <h2>{{ t('setup_title') }}</h2>
+  {% if saved %}<p class="ok-msg">{{ t('setup_saved') }}</p>{% endif %}
+  <p>{{ t('setup_help') }}</p>
+  {% if confirmed %}<p class="muted">{{ t('setup_confirmed', when=confirmed) }}</p>{% endif %}
+  <form method="post" action="/setup" id="setup-form">
+    <div class="rooms setup" id="room-tiles">
+      {% for r in rooms %}
+      <div class="room tile" data-room="{{ r.name }}" tabindex="0" role="button" aria-pressed="false">
+        <div class="room-head"><strong>{{ r.name }}</strong></div>
+        <label><input type="checkbox" name="enabled" value="{{ r.name }}" {% if r.enabled %}checked{% endif %}> {{ t('setup_enabled') }}</label><br>
+        <label><input type="radio" name="coordinator" value="{{ r.name }}" {% if r.coordinator %}checked{% endif %} required> {{ t('setup_coordinator') }}</label>
+        <div class="muted small nb-list"></div>
+      </div>
+      {% endfor %}
+    </div>
+    <p class="hint" id="select-hint" hidden></p>
+    <details>
+      <summary>{{ t('setup_pairs') }}</summary>
+      <div class="pairs">
+      {% for a, b in all_pairs %}
+        <label><input type="checkbox" name="pair" value="{{ a }}|{{ b }}" data-a="{{ a }}" data-b="{{ b }}" {% if (a, b) in pairs or (b, a) in pairs %}checked{% endif %}> {{ a }} ↔ {{ b }}</label>
+      {% endfor %}
+      </div>
+    </details>
+    <p><button type="submit" class="button">{{ t('setup_save') }}</button></p>
+  </form>
+</section>
+{% endblock %}
+{% block scripts %}
+<script>window.ZPA_HINT = {{ t('setup_select_hint', room='%ROOM%')|tojson }};</script>
+<script src="/static/setup.js"></script>
+{% endblock %}

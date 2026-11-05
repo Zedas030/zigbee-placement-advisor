@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% from "parts.html" import device_table %}
+{% block title %}{{ t('nav_devices') }} – {{ t('app_title') }}{% endblock %}
+{% block main %}
+<section class="card">
+  <h2>{{ t('nav_devices') }}</h2>
+  <p class="muted">{{ t('window', days=v.window_days) }} {{ v.basis }}</p>
+  {{ device_table(v) }}
+</section>
+{% endblock %}

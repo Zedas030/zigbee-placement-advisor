@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% from "parts.html" import rec_card, side_cards, room_grid %}
+{% block main %}
+{% if not v.setup_confirmed %}
+<div class="banner">{{ t('rec_setup') }} <a class="button" href="/setup">{{ t('nav_rooms') }}</a></div>
+{% endif %}
+<div class="layout">
+  <div class="col-main">
+    {{ rec_card(v) }}
+    <section class="card">
+      <h2>{{ t('nav_rooms') }}</h2>
+      {{ room_grid(v) }}
+    </section>
+  </div>
+  <div class="col-side">{{ side_cards(v) }}</div>
+</div>
+{% endblock %}
