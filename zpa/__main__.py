@@ -66,7 +66,7 @@ async def _check(cfg: dict, token: str) -> int:
             for r in app.db.devices()
         ]
         out["outages_backfilled"] = len(app.db.outages(0))
-        out["channel"] = app.channel_text()
+        out["channel"] = app.channel_text(hist=app.channel_history())
         print(json.dumps(out, indent=2, ensure_ascii=False, default=str))
         app.db.close()
         return 0 if summary.get("ok") else 1

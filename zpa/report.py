@@ -5,7 +5,7 @@ import logging
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from .templating import env, static_text
+from .templating import env, report_css
 from .views import overview
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -26,7 +26,7 @@ def summary_text(app: "App", view: dict) -> str:
         parts.append(view["basis"])
     parts.append(t("summary_weak", weak=view["weak_count"], total=view["device_count"]))
     parts.append(t("summary_outages", n=view["outages_week"]))
-    if view["channel"]["status"] == "overlap":
+    if view["channel"]["status"] == "overlap" or view["channel"]["auto"]:
         parts.append(view["channel"]["text"])
     for inc in view["health"]["incidents"][:2]:
         parts.append("⚠ " + inc["message"])
@@ -37,7 +37,7 @@ def render_report(app: "App", now: float) -> tuple[str, str, dict]:
     view = overview(app, now)
     week = week_id(app, now)
     html = env(app).get_template("report.html").render(
-        v=view, week=week, generated=app.fmt(now), css=static_text("style.css"), standalone=True,
+        v=view, week=week, generated=app.fmt(now), css=report_css(), standalone=True,
     )
     return week, html, view
 

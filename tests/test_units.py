@@ -46,6 +46,64 @@ def test_parse_fritz_exporter():
     assert channels.parse_exporter(text, "fritz_wifi_channel", "6GHz") is None
 
 
+def test_best_wifi_channels():
+    # Zigbee 20 = 2450 MHz: Wi-Fi 1 (2412) is 38 MHz away, then 13 (2472) and 12 (2467)
+    assert channels.best_wifi_channels(20) == [(1, 38), (13, 22), (12, 17)]
+    assert channels.best_wifi_channels(20, limit=1) == [(1, 38)]
+    assert channels.best_wifi_channels(11) == [(13, 67), (12, 62), (11, 57)]  # nothing below 2405 MHz
+    assert channels.best_wifi_channels(25) == [(1, 63), (2, 58), (3, 53)]
+    assert channels.best_wifi_channels(15) == [(13, 47), (1, 13), (12, 42)]
+    for z in range(11, 27):
+        assert all(channels.check(z, w).status == "ok" for w, _ in channels.best_wifi_channels(z, limit=13))
+    assert channels.best_wifi_channels(None) == [] and channels.best_wifi_channels(5) == []
+
+
+def test_channel_history_counts_changes_and_overlap_time():
+    h, day, now = 3600, 86400, 100 * 86400
+    # hopping 1 -> 7 -> 11 -> 1 within the week; 7 overlaps Zigbee 20
+    readings = [(now - 6 * day, 1, 20), (now - 6 * day + 12 * h, 1, 20), (now - 5 * day, 7, 20),
+                (now - 5 * day + 5 * h, 7, 20), (now - 4 * day, 11, 20), (now - 3 * day, 1, None)]
+    hist = channels.history(readings, now, max_gap=10 * day, zigbee=20)
+    assert hist.changes == 3 and hist.auto and hist.channels == [1, 7, 11]
+    assert hist.last_change == now - 3 * day and hist.since == now - 6 * day
+    assert hist.overlap_share == pytest.approx(1 / 6)  # 7 held for 1 of the 6 covered days
+    # a reading before the window is the starting state: a change right after the window start counts
+    hist = channels.history([(now - 8 * day, 7, 20), (now - 6 * day, 1, 20)], now, max_gap=10 * day)
+    assert hist.changes == 1 and not hist.auto and hist.since == now - 7 * day
+    assert hist.overlap_share == pytest.approx(1 / 7)
+    # stable channel: no change, no overlap
+    hist = channels.history([(now - 2 * day, 1, 20), (now - h, 1, 20)], now)
+    assert hist.changes == 0 and hist.overlap_share == 0 and hist.channels == [1]
+    # gaps longer than max_gap (collector down) count neither as overlap nor as clean time
+    hist = channels.history([(now - 3 * day, 7, 20), (now - 2 * day, 1, 20)], now, max_gap=h)
+    assert hist.overlap_share == pytest.approx(0.5)
+    assert channels.history([], now).readings == 0 and channels.history([], now).overlap_share is None
+    # stored without Zigbee channel -> falls back to the current one; unknown is not counted
+    assert channels.history([(now - h, 7, None)], now, zigbee=20).overlap_share == 1
+    assert channels.history([(now - h, 7, None)], now).overlap_share is None
+
+
+def test_wifi_readings_storage(tmp_path):
+    db = DB(tmp_path / "t.db")
+    assert db.get_meta("schema_version") == 2
+    for ts, w in [(10, 1), (20, 7), (30, 11), (40, 1)]:
+        db.add_wifi_reading(ts, w, 20)
+    assert [r[0] for r in db.wifi_readings(25)] == [20, 30, 40]  # includes the state at `since`
+    assert db.purge(raw_before=25, daily_before_day="0000")["wifi_readings"] == 2
+    assert [r[1] for r in db.wifi_readings(0)] == [11, 1]
+
+
+def test_schema_upgrade_from_v1(tmp_path):
+    db = DB(tmp_path / "t.db")
+    db.conn.execute("DROP TABLE wifi_readings")
+    db.set_meta("schema_version", 1)
+    db.close()
+    db = DB(tmp_path / "t.db")
+    assert db.get_meta("schema_version") == 2
+    db.add_wifi_reading(1, 1, 20)
+    assert db.wifi_readings(0) == [(1.0, 1, 20)]
+
+
 # ------------------------------------------------------------------ config
 def test_defaults_are_valid():
     cfg = defaults()
@@ -67,6 +125,8 @@ def test_config_file_and_errors(tmp_path):
         ("notify: {services: ['notify.x']}\n", "notify.services"),
         ("timezone: Mars/Base\n", "timezone"),
         ("retention: {raw_days: 7}\n", "raw_days"),
+        ("ui: {home_url: 'dashboard.local'}\n", "ui.home_url"),
+        ("ui: {home_label: ''}\n", "ui.home_label"),
         ("[1, 2]\n", "mapping"),
     ]:
         p.write_text(bad, encoding="utf-8")

@@ -11,7 +11,7 @@ from typing import Any, Iterable
 
 from .model import Device, Link
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2  # 2: wifi_readings
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT);
@@ -49,6 +49,7 @@ CREATE TABLE IF NOT EXISTS daily_stats (
     day TEXT, ieee TEXT, lqi_median REAL, samples INTEGER, outages INTEGER, PRIMARY KEY (day, ieee)
 );
 CREATE TABLE IF NOT EXISTS reports (week TEXT PRIMARY KEY, ts REAL, path TEXT, summary TEXT);
+CREATE TABLE IF NOT EXISTS wifi_readings (ts REAL PRIMARY KEY, wifi INTEGER, zigbee INTEGER);
 """
 
 
@@ -70,7 +71,9 @@ class DB:
             self.conn.execute("PRAGMA journal_mode=WAL")
             self.conn.execute("PRAGMA synchronous=NORMAL")
             self.conn.executescript(SCHEMA)
-            if self.get_meta("schema_version") is None:
+            # New tables are created by SCHEMA above (CREATE ... IF NOT EXISTS), so upgrading only
+            # needs the version bump: 1 -> 2 added wifi_readings.
+            if (self.get_meta("schema_version") or 0) < SCHEMA_VERSION:
                 self.set_meta("schema_version", SCHEMA_VERSION)
 
     # -- helpers ---------------------------------------------------------
@@ -279,6 +282,17 @@ class DB:
                 done += 1
         return done
 
+    # -- Wi-Fi channel history ------------------------------------------
+    def add_wifi_reading(self, ts: float, wifi: int, zigbee: int | None) -> None:
+        self.x("INSERT OR REPLACE INTO wifi_readings(ts,wifi,zigbee) VALUES(?,?,?)", (ts, wifi, zigbee))
+
+    def wifi_readings(self, since: float) -> list[tuple[float, int, int | None]]:
+        """Readings from `since` on, plus the last one before it (the state at `since`)."""
+        rows = self.q("SELECT ts,wifi,zigbee FROM wifi_readings WHERE ts>=? "
+                      "UNION SELECT * FROM (SELECT ts,wifi,zigbee FROM wifi_readings WHERE ts<? ORDER BY ts DESC LIMIT 1) "
+                      "ORDER BY ts", (since, since))
+        return [(r["ts"], r["wifi"], r["zigbee"]) for r in rows]
+
     def purge(self, raw_before: float, daily_before_day: str) -> dict[str, int]:
         counts = {
             "device_samples": self.x("DELETE FROM device_samples WHERE ts<?", (raw_before,)),
@@ -287,6 +301,7 @@ class DB:
             "recommendations": self.x("DELETE FROM recommendations WHERE ts<?", (raw_before,)),
             "daily_stats": self.x("DELETE FROM daily_stats WHERE day<?", (daily_before_day,)),
             "incidents": self.x("DELETE FROM incidents WHERE closed_ts IS NOT NULL AND closed_ts<?", (raw_before,)),
+            "wifi_readings": self.x("DELETE FROM wifi_readings WHERE ts<?", (raw_before,)),
         }
         with self.lock:
             self.conn.execute("PRAGMA incremental_vacuum")

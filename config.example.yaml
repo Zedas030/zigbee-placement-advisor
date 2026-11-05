@@ -36,6 +36,12 @@ web:
   # Address used in notification links (how you reach the UI from your phone)
   public_url: http://advisor.example.local:8099
 
+ui:
+  # Optional button in the header that leads back to your house dashboard (e.g. a Grafana or
+  # homepage start page). Empty = no button.
+  home_url: ""            # e.g. http://dashboard.example.local/
+  home_label: Dashboard   # button text (short; on phones only the house icon is shown)
+
 notify:
   # Home Assistant notify services WITHOUT the "notify." prefix, e.g. mobile_app_phone.
   # Empty list = no notifications.
@@ -58,6 +64,8 @@ wifi:
   metric: fritz_wifi_channel
   band_label: 2.4GHz
   manual_channel: null
+  # fritz_exporter queries the router live on every scrape, which can take 10-30 s
+  timeout_seconds: 45
 
 thresholds:
   # Days looked at for "weak device" decisions and the recommendation

@@ -213,6 +213,17 @@ def test_self_monitoring_alerts_instead_of_failing_silently(tmp_path):
             await env.cycle()
             assert len(env.notes("channel overlap")) == 1
             assert "overlaps" in env.notes("channel overlap")[0]["message"]
+            assert "fixed 1" in env.notes("channel overlap")[0]["message"]  # concrete fix for Zigbee 20
+            body = await (await env.client.get("/")).text()
+            assert "tone-bad" in body and "Best Wi-Fi channels for Zigbee 20: 1 (38 MHz apart)" in body
+            # back to 11: two changes in 7 days -> looks like automatic channel selection (amber, still a fix)
+            env.fake.wifi_channel = 11
+            await env.cycle()
+            view = env.app.channel_view()
+            assert view["status"] == "ok" and view["auto"] and view["tone"] == "warn" and view["changes"] == 2
+            body = await (await env.client.get("/")).text()
+            assert "automatic channel selection" in body and "Set the 2.4 GHz Wi-Fi channel to a fixed 1" in body
+            assert "zpa_wifi_channel_changes_7d 2.0" in await (await env.client.get("/metrics")).text()
 
             # a configured notify service that does not exist
             env.app.cfg["notify"]["services"].append("mobile_app_gone")
@@ -285,4 +296,20 @@ def test_german_ui(tmp_path):
             assert "Zigbee-Platzberater" in body and "Raummodell fehlt" in body and 'lang="de"' in body
             body = await (await env.client.get("/setup")).text()
             assert "Coordinator steht hier" in body
+    run(main())
+
+
+def test_dashboard_link_and_theme(tmp_path):
+    async def main():
+        async with Env(tmp_path, ui__home_url="http://dashboard.example.local/", ui__home_label="House") as env:
+            await env.cycle()
+            body = await (await env.client.get("/")).text()
+            assert 'href="http://dashboard.example.local/"' in body and ">House<" in body
+            assert "/static/homelab-theme.css" in body and 'class="card hero' in body
+            assert "No overlap: Zigbee 20 vs Wi-Fi 11, 12 MHz apart." in body and "tone-ok" in body
+            r = await env.client.get("/static/homelab-theme.css")
+            assert r.status == 200 and "--accent" in await r.text()
+        async with Env(tmp_path / "b") as env:
+            await env.cycle()
+            assert "home-btn" not in await (await env.client.get("/")).text()
     run(main())

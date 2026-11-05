@@ -1,17 +1,24 @@
 {% extends "base.html" %}
-{% from "parts.html" import rec_card, side_cards, room_grid %}
+{% from "parts.html" import hero, kpis, rec_card, side_cards, room_grid %}
+{% from "icons.html" import i %}
 {% block main %}
+<div class="page-head">
+  <div><div class="kicker">{{ t('ov_kicker') }}</div><h1>{{ t('ov_h1') }}</h1><p>{{ t('ov_lead') }}</p></div>
+  <div class="actions"><a class="btn" href="/setup">{{ i('rooms') }}{{ t('nav_rooms') }}</a><a class="btn" href="/devices">{{ i('devices') }}{{ t('nav_devices') }}</a></div>
+</div>
 {% if not v.setup_confirmed %}
-<div class="banner">{{ t('rec_setup') }} <a class="button" href="/setup">{{ t('nav_rooms') }}</a></div>
+<div class="note warn banner"><span>{{ t('rec_setup') }}</span> <a class="btn sm primary" href="/setup">{{ t('nav_rooms') }}</a></div>
 {% endif %}
-<div class="layout">
-  <div class="col-main">
+{{ hero(v) }}
+{{ kpis(v) }}
+<div class="grid split ov-split">
+  <div class="stack">
     {{ rec_card(v) }}
-    <section class="card">
-      <h2>{{ t('nav_rooms') }}</h2>
+    <section>
+      <div class="sec-h"><h2>{{ t('room_model_title') }}</h2><span class="sub">{{ t('room_model_sub') }}</span></div>
       {{ room_grid(v) }}
     </section>
   </div>
-  <div class="col-side">{{ side_cards(v) }}</div>
+  <div class="stack">{{ side_cards(v) }}</div>
 </div>
 {% endblock %}

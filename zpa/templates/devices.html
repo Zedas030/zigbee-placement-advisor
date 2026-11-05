@@ -1,10 +1,13 @@
 {% extends "base.html" %}
 {% from "parts.html" import device_table %}
-{% block title %}{{ t('nav_devices') }} – {{ t('app_title') }}{% endblock %}
+{% block title %}{{ t('nav_devices') }} · {{ t('app_title') }}{% endblock %}
 {% block main %}
+<div class="page-head">
+  <div><div class="kicker">{{ t('dev_kicker') }}</div><h1>{{ t('nav_devices') }}</h1><p>{{ t('dev_lead') }}</p></div>
+  <div class="actions"><span class="pill"><span class="d"></span>{{ v.device_count }} {{ t('kpi_devices') }}</span>{% if v.weak_count %}<span class="pill bad"><span class="d"></span>{{ t('kpi_devices_sub', weak=v.weak_count) }}</span>{% endif %}</div>
+</div>
 <section class="card">
-  <h2>{{ t('nav_devices') }}</h2>
-  <p class="muted">{{ t('window', days=v.window_days) }} {{ v.basis }}</p>
-  {{ device_table(v) }}
+  <div class="card-b"><p class="muted small">{{ t('window', days=v.window_days) }} {{ v.basis }}</p></div>
+  <div class="card-b flush">{{ device_table(v) }}</div>
 </section>
 {% endblock %}

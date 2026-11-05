@@ -24,6 +24,21 @@ def quality_class(st) -> str:
     return "ok"
 
 
+STATE_TONE = {"weak": "bad", "good": "ok", "ok": "ok", "coord": "accent", "nodata": ""}
+
+
+def lqi_tone(app: "App", lqi: float | None) -> str:
+    """Colour of an LQI meter: below the weak threshold red, below the anchor threshold amber, else green."""
+    if lqi is None:
+        return ""
+    th = app.cfg["thresholds"]
+    return "bad" if lqi < th["weak_lqi_median"] else "warn" if lqi < th["anchor_min_lqi"] else "ok"
+
+
+def lqi_pct(lqi: float | None) -> int:
+    return 0 if lqi is None else max(2, min(100, round(lqi / 255 * 100)))
+
+
 def device_rows(app: "App", stats) -> list[dict]:
     t = app.t
     rows = []
@@ -46,6 +61,8 @@ def device_rows(app: "App", stats) -> list[dict]:
             "last": st.last_lqi, "outages": st.outages, "parent_changes": st.parent_changes,
             "samples": st.samples, "state": state, "cls": quality_class(st), "parent": parent,
             "available": st.available, "spark": sparkline(lqis[-80:]),
+            "tone": STATE_TONE.get(quality_class(st), ""),
+            "lqi_tone": lqi_tone(app, st.median_lqi), "lqi_pct": lqi_pct(st.median_lqi),
         })
     return rows
 
@@ -65,17 +82,20 @@ def room_tiles(app: "App", stats, rec) -> list[dict]:
         devs = by_room.get(r["name"], [])
         tiles.append({
             "name": r["name"], "coordinator": bool(r["coordinator"]),
-            "devices": [{"name": d.name, "cls": quality_class(d), "ieee": d.ieee,
-                         "lqi": None if d.median_lqi is None else round(d.median_lqi)} for d in devs],
+            "devices": [_room_device(app, d) for d in devs],
             "candidate": cand.get(r["name"]), "best": r["name"] == best,
             "neighbors": sorted(b if a == r["name"] else a for a, b in model.adjacency if r["name"] in (a, b)),
         })
     if by_room.get(""):
         tiles.append({"name": app.t("no_room"), "coordinator": False, "candidate": None, "best": False,
-                      "neighbors": [], "devices": [{"name": d.name, "cls": quality_class(d), "ieee": d.ieee,
-                                                    "lqi": None if d.median_lqi is None else round(d.median_lqi)}
-                                                   for d in by_room[""]]})
+                      "neighbors": [], "devices": [_room_device(app, d) for d in by_room[""]]})
     return tiles
+
+
+def _room_device(app: "App", d) -> dict:
+    return {"name": d.name, "cls": quality_class(d), "ieee": d.ieee, "tone": STATE_TONE.get(quality_class(d), ""),
+            "lqi": None if d.median_lqi is None else round(d.median_lqi),
+            "lqi_tone": lqi_tone(app, d.median_lqi), "lqi_pct": lqi_pct(d.median_lqi)}
 
 
 def before_after(app: "App") -> list[dict]:
@@ -97,11 +117,14 @@ def before_after(app: "App") -> list[dict]:
     return out
 
 
+HERO_TONE = {"healthy": "ok", "ok": "warn", "no_candidate": "warn", "setup_needed": "warn",
+             "insufficient_data": "info"}
+
+
 def overview(app: "App", now: float | None = None) -> dict:
     now = app.now() if now is None else now
     stats = app.current_stats(now)
     rec = app.recommendation(now, stats)
-    chk = app.channel_check()
     last_ok = app.db.get_meta("last_success_ts")
     names = {s.ieee: s.name for s in stats.devices.values()}
     return {
@@ -111,7 +134,7 @@ def overview(app: "App", now: float | None = None) -> dict:
         "basis": app.basis_text(rec),
         "candidates": [dict(c.__dict__, device_names=[names.get(i, i) for i in c.devices],
                             level=app.t(f"level_{c.confidence_level}")) for c in rec.candidates],
-        "channel": {"status": chk.status, "text": app.channel_text(chk)},
+        "channel": app.channel_view(now),
         "health": {
             "ok": last_ok is not None,
             "text": app.t("health_ok", ago=app.t.ago(now - last_ok), source=app.db.get_meta("source_version", ""))
@@ -129,6 +152,7 @@ def overview(app: "App", now: float | None = None) -> dict:
         "outages_week": sum(s.outages for s in app.stats(now - 7 * 86400, now + 1).devices.values()),
         "before_after": before_after(app),
         "setup_confirmed": app.db.get_meta("rooms_confirmed_ts") is not None,
+        "hero_tone": HERO_TONE.get(rec.status, "info"),
     }
 
 

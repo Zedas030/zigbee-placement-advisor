@@ -1,44 +1,89 @@
-{% macro rec_card(v) %}
-<section class="card rec status-{{ v.rec.status }}">
-  <h2>{{ t('rec_title') }}</h2>
-  <p class="lead">{{ v.rec_lines[0] }}</p>
-  {% for line in v.rec_lines[1:] %}<p>{{ line }}</p>{% endfor %}
-  {% if v.candidates %}
-  <table class="cands">
-    <thead><tr><th>{{ t('col_room') }}</th><th>{{ t('stabilises') }}</th><th>{{ t('col_device') }}</th><th>{{ t('confidence') }}</th></tr></thead>
-    <tbody>
-    {% for c in v.candidates[:5] %}
-      <tr{% if loop.first %} class="best"{% endif %}><td>{{ c.room }}</td><td>{{ c.count }}</td>
-        <td>{{ c.device_names|join(', ') }}</td><td><span class="conf conf-{{ c.confidence_level }}">{{ c.level }}</span></td></tr>
-    {% endfor %}
-    </tbody>
-  </table>
-  {% endif %}
-  <p class="muted">{{ v.basis }} {{ t('window', days=v.window_days) }}</p>
-  <p class="muted">{{ t('estimate_note') }}</p>
+{% from "icons.html" import i %}
+
+{% macro hero(v) %}
+<section class="card hero {{ v.hero_tone }} rec status-{{ v.rec.status }}">
+  <div class="h-ico">{{ i({'ok': 'ok', 'warn': 'warn', 'bad': 'bad'}.get(v.hero_tone, 'info')) }}</div>
+  <div class="h-txt">
+    <h2>{{ v.rec_lines[0] }}</h2>
+    <p>{{ v.basis }} {{ t('window', days=v.window_days) }}</p>
+  </div>
 </section>
 {% endmacro %}
 
+{% macro kpis(v) %}
+<div class="grid cols-4 kpis">
+  <div class="card tile">
+    <div class="tile-top">{{ i('devices') }}{{ t('kpi_devices') }}</div>
+    <div class="tile-val">{{ v.device_count }}</div>
+    <div class="tile-sub">{% if v.weak_count %}<span class="pill bad"><span class="d"></span>{{ t('kpi_devices_sub', weak=v.weak_count) }}</span>{% else %}<span class="pill ok"><span class="d"></span>{{ t('kpi_devices_sub', weak=0) }}</span>{% endif %}</div>
+  </div>
+  <div class="card tile">
+    <div class="tile-top">{{ i('calendar') }}{{ t('kpi_days') }}</div>
+    <div class="tile-val">{{ t.number(v.rec.days) }}</div>
+    <div class="tile-sub">{{ t('kpi_days_sub', days=v.window_days) }}</div>
+  </div>
+  <div class="card tile">
+    <div class="tile-top">{{ i('samples') }}{{ t('kpi_samples') }}</div>
+    <div class="tile-val">{{ t.number(v.rec.measurements) }}</div>
+    <div class="tile-sub">{{ t('kpi_samples_sub', scans=v.rec.scans) }}</div>
+  </div>
+  <div class="card tile">
+    <div class="tile-top">{{ i('restart') }}{{ t('kpi_events') }}</div>
+    <div class="tile-val">{{ v.system_events }}</div>
+    <div class="tile-sub">{{ t('kpi_events_sub', n=v.outages_week) }}</div>
+  </div>
+</div>
+{% endmacro %}
+
+{% macro rec_card(v) %}
+<section class="card rec-details">
+  <div class="card-h"><span class="ico">{{ i('router') }}</span><h3>{{ t('rec_title') }}</h3>
+    <div class="aside">{% if v.rec.best %}<span class="pill accent"><span class="d"></span>{{ v.rec.best.room }}</span>{% endif %}</div></div>
+  <div class="card-b">
+    {% for line in v.rec_lines[1:] %}<p>{{ line }}</p>{% endfor %}
+    {% if v.candidates %}
+    <div class="tbl-wrap">
+    <table class="t cands">
+      <thead><tr><th>{{ t('col_room') }}</th><th class="num">{{ t('stabilises') }}</th><th>{{ t('col_device') }}</th><th>{{ t('confidence') }}</th></tr></thead>
+      <tbody>
+      {% for c in v.candidates[:5] %}
+        <tr{% if loop.first %} class="best"{% endif %}><td><strong>{{ c.room }}</strong></td><td class="num">{{ c.count }}</td>
+          <td>{{ c.device_names|join(', ') }}</td>
+          <td><span class="pill {{ {'high': 'ok', 'medium': 'warn', 'low': 'bad'}.get(c.confidence_level, '') }} conf conf-{{ c.confidence_level }}"><span class="d"></span>{{ c.level }}</span></td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    </div>
+    {% endif %}
+    <p class="muted small">{{ t('estimate_note') }}</p>
+  </div>
+</section>
+{% endmacro %}
+
+{% macro lqi_meter(d) %}
+<span class="lqi" title="LQI {{ d.lqi if d.lqi is not none else '–' }}"><span class="meter {{ d.lqi_tone }}"><i style="width:{{ d.lqi_pct }}%"></i></span><span class="lqi-n">{{ d.lqi if d.lqi is not none else '–' }}</span></span>
+{% endmacro %}
+
 {% macro device_table(v, links=True) %}
-<div class="scroll">
-<table class="devices">
+<div class="tbl-wrap">
+<table class="t devices">
   <thead><tr>
     <th>{{ t('col_device') }}</th><th>{{ t('col_room') }}</th><th>{{ t('col_type') }}</th>
-    <th class="num">{{ t('col_lqi_median') }}</th><th class="num">{{ t('col_lqi_last') }}</th>
+    <th>{{ t('col_lqi_median') }}</th><th class="num">{{ t('col_lqi_last') }}</th>
     <th class="num">{{ t('col_outages') }}</th><th class="num">{{ t('col_parent_changes') }}</th>
     <th class="num">{{ t('col_samples') }}</th><th>{{ t('col_trend') }}</th><th>{{ t('col_state') }}</th>
   </tr></thead>
   <tbody>
   {% for d in v.devices %}
     <tr class="q-{{ d.cls }}">
-      <td>{% if links %}<a href="/device/{{ d.ieee }}">{{ d.name }}</a>{% else %}{{ d.name }}{% endif %}
-        {% if d.available == False %}<span class="badge bad">{{ t('unavailable') }}</span>{% endif %}</td>
-      <td>{{ d.room }}</td><td>{{ d.type }}<br><span class="muted">{{ d.power }}</span></td>
-      <td class="num">{{ d.median if d.median is not none else '–' }}</td>
+      <td><strong>{% if links %}<a href="/device/{{ d.ieee }}">{{ d.name }}</a>{% else %}{{ d.name }}{% endif %}</strong>
+        {% if d.available == False %}<br><span class="pill bad"><span class="d"></span>{{ t('unavailable') }}</span>{% endif %}</td>
+      <td>{{ d.room }}</td><td>{{ d.type }}<br><span class="muted small">{{ d.power }}</span></td>
+      <td>{{ lqi_meter({'lqi': d.median, 'lqi_tone': d.lqi_tone, 'lqi_pct': d.lqi_pct}) }}</td>
       <td class="num">{{ d.last if d.last is not none else '–' }}</td>
       <td class="num">{{ d.outages }}</td><td class="num">{{ d.parent_changes }}</td>
       <td class="num">{{ d.samples }}</td><td class="spark-cell">{{ d.spark|safe }}</td>
-      <td><span class="dot dot-{{ d.cls }}"></span>{{ d.state }}</td>
+      <td><span class="pill {{ d.tone }} state"><span class="d"></span>{{ d.state }}</span></td>
     </tr>
   {% endfor %}
   </tbody>
@@ -46,46 +91,87 @@
 </div>
 {% endmacro %}
 
+{% macro channel_card(v) %}
+{% set c = v.channel %}
+<section class="card channel{% if c.tone %} tone-{{ c.tone }}{% endif %} ch-{{ c.status }}">
+  <div class="card-h"><span class="ico">{{ i('wifi') }}</span><h3>{{ t('channel_title') }}</h3>
+    <div class="aside">
+      {% if c.status == 'overlap' %}<span class="pill bad"><span class="d"></span>{{ t('channel_pill_overlap') }}</span>
+      {% elif c.status == 'ok' %}<span class="pill ok"><span class="d"></span>{{ t('channel_pill_ok') }}</span>
+      {% else %}<span class="pill"><span class="d"></span>{{ t('channel_pill_unknown') }}</span>{% endif %}
+      {% if c.auto %}<span class="pill warn"><span class="d"></span>{{ t('channel_pill_auto') }}</span>{% endif %}
+    </div></div>
+  <div class="card-b">
+    <p class="ch-head"><strong>{{ c.headline }}</strong></p>
+    {% if c.readings %}
+    <dl class="kv">
+      <dt>{{ t('channel_lbl_now') }}</dt><dd>{{ t('channel_now', zigbee=c.zigbee or '?', wifi=c.wifi or '?') }}</dd>
+      <dt>{{ t('channel_lbl_changes') }}</dt><dd>{{ c.changes }} <span class="muted">({{ t('channel_period') }})</span></dd>
+      {% if c.overlap_pct is not none %}<dt>{{ t('channel_lbl_share') }}</dt><dd><span class="share"><span class="meter {{ 'ok' if c.overlap_pct == 0 else 'bad' if c.overlap_pct >= 50 else 'warn' }}"><i style="width:{{ [c.overlap_pct, 2]|max }}%"></i></span>{{ c.overlap_pct }} %</span></dd>{% endif %}
+      {% if c.channels_seen|length > 1 %}<dt>{{ t('channel_lbl_seen') }}</dt><dd>{{ c.channels_seen|join(', ') }}</dd>{% endif %}
+      {% if not c.full_window %}<dt>{{ t('channel_lbl_since') }}</dt><dd>{{ c.since }}</dd>{% endif %}
+    </dl>
+    {% else %}<p class="muted small">{{ t('channel_no_history') }}</p>{% endif %}
+    {% for n in c.notes %}<div class="note warn">{{ n }}</div>{% endfor %}
+    {% if c.fix %}
+    <div class="note {{ 'bad' if c.status == 'overlap' else 'warn' }} fix">
+      <p>{{ c.best_text }}</p>
+      <p><strong>{{ c.fix }}</strong></p>
+    </div>
+    {% endif %}
+    <p class="muted small">{{ t('channel_assume') }}</p>
+  </div>
+</section>
+{% endmacro %}
+
 {% macro side_cards(v) %}
-<section class="card ch-{{ v.channel.status }}">
-  <h2>{{ t('channel_title') }}</h2>
-  <p>{{ v.channel.text }}</p>
+{{ channel_card(v) }}
+<section class="card{% if v.health.incidents %} tone-bad{% elif not v.health.ok %} tone-warn{% endif %}">
+  <div class="card-h"><span class="ico">{{ i('health') }}</span><h3>{{ t('health_title') }}</h3>
+    <div class="aside">{% if v.health.incidents %}<span class="pill bad"><span class="d"></span>{{ t('status_problem', n=v.health.incidents|length) }}</span>{% elif v.health.ok %}<span class="pill ok"><span class="d"></span>{{ t('status_live') }}</span>{% endif %}</div></div>
+  <div class="card-b">
+    <p>{{ v.health.text }}</p>
+    {% if v.health.incidents %}
+      <h4 class="sub-h">{{ t('health_incidents') }}</h4>
+      <ul class="incidents">{% for inc in v.health.incidents %}<li><strong>{{ inc.since }}</strong> {{ inc.message }}</li>{% endfor %}</ul>
+    {% endif %}
+    {% if v.system_events %}<p class="muted small">{{ t('system_events', n=v.system_events) }}</p>{% endif %}
+    <p class="muted small">{{ t('next_scan_note') }}</p>
+  </div>
 </section>
 <section class="card">
-  <h2>{{ t('health_title') }}</h2>
-  <p>{{ v.health.text }}</p>
-  {% if v.health.incidents %}
-    <h3>{{ t('health_incidents') }}</h3>
-    <ul class="incidents">{% for i in v.health.incidents %}<li><strong>{{ i.since }}</strong> {{ i.message }}</li>{% endfor %}</ul>
-  {% endif %}
-  {% if v.system_events %}<p class="muted">{{ t('system_events', n=v.system_events) }}</p>{% endif %}
-  <p class="muted">{{ t('next_scan_note') }}</p>
-</section>
-<section class="card">
-  <h2>{{ t('ba_title') }}</h2>
+  <div class="card-h"><span class="ico">{{ i('swap') }}</span><h3>{{ t('ba_title') }}</h3></div>
+  <div class="card-b">
   {% if not v.before_after %}<p class="muted">{{ t('ba_none') }}</p>{% endif %}
   {% for b in v.before_after %}
     <p class="{{ 'verdict-' ~ b.verdict if b.verdict else '' }}"><strong>{{ b.name }}</strong> ({{ b.room }}, {{ b.when }}): {{ b.text }}</p>
     {% if b.deltas %}
-    <table class="small"><thead><tr><th>{{ t('col_device') }}</th><th class="num">LQI {{ t('before') }}</th><th class="num">LQI {{ t('after') }}</th><th class="num">{{ t('col_outages') }}/7d {{ t('before') }}</th><th class="num">{{ t('after') }}</th></tr></thead>
-    <tbody>{% for d in b.deltas %}<tr class="o-{{ d.outcome }}"><td>{{ d.name }}</td><td class="num">{{ d.lqi_before|round|int if d.lqi_before is not none else '–' }}</td><td class="num">{{ d.lqi_after|round|int if d.lqi_after is not none else '–' }}</td><td class="num">{{ d.outages_pw_before }}</td><td class="num">{{ d.outages_pw_after }}</td></tr>{% endfor %}</tbody></table>
+    <div class="tbl-wrap"><table class="t small"><thead><tr><th>{{ t('col_device') }}</th><th class="num">LQI {{ t('before') }}</th><th class="num">LQI {{ t('after') }}</th><th class="num">{{ t('col_outages') }}/7d {{ t('before') }}</th><th class="num">{{ t('after') }}</th></tr></thead>
+    <tbody>{% for d in b.deltas %}<tr class="o-{{ d.outcome }}"><td>{{ d.name }}</td><td class="num">{{ d.lqi_before|round|int if d.lqi_before is not none else '–' }}</td><td class="num">{{ d.lqi_after|round|int if d.lqi_after is not none else '–' }}</td><td class="num">{{ d.outages_pw_before }}</td><td class="num">{{ d.outages_pw_after }}</td></tr>{% endfor %}</tbody></table></div>
     {% endif %}
   {% endfor %}
+  </div>
 </section>
 {% endmacro %}
 
-{% macro room_grid(v) %}
-<div class="rooms">
+{% macro room_grid(v, links=True) %}
+<div class="grid cols-auto rooms">
 {% for r in v.rooms %}
-  <div class="room{% if r.best %} best{% endif %}">
-    <div class="room-head"><strong>{{ r.name }}</strong>
-      {% if r.coordinator %}<span class="badge">Coordinator</span>{% endif %}
-      {% if r.candidate %}<span class="badge plus" title="{{ t('stabilises') }}">+{{ r.candidate.count }}</span>{% endif %}
+  <div class="card room{% if r.best %} best tone-accent{% endif %}">
+    <div class="card-h"><h3>{{ r.name }}</h3>
+      <div class="aside">
+        {% if r.coordinator %}<span class="pill accent"><span class="d"></span>Coordinator</span>{% endif %}
+        {% if r.candidate %}<span class="pill {{ 'ok' if r.best else '' }} plus" title="{{ t('stabilises') }}">+{{ r.candidate.count }}{% if r.best %} · {{ t('best_room') }}{% endif %}</span>{% endif %}
+      </div>
     </div>
-    <ul class="chips">
-      {% for d in r.devices %}<li class="chip q-{{ d.cls }}"><span class="dot dot-{{ d.cls }}"></span>{{ d.name }}{% if d.lqi is not none %} · {{ d.lqi }}{% endif %}</li>{% endfor %}
+    {% if r.devices %}
+    <ul class="rows dev-rows">
+      {% for d in r.devices %}<li class="q-{{ d.cls }}"><i class="sd {{ d.tone }}"></i>
+        <span class="grow">{% if links %}<a href="/device/{{ d.ieee }}">{{ d.name }}</a>{% else %}{{ d.name }}{% endif %}</span>
+        {{ lqi_meter(d) }}</li>{% endfor %}
     </ul>
-    {% if r.neighbors %}<div class="muted small">↔ {{ r.neighbors|join(', ') }}</div>{% endif %}
+    {% else %}<div class="card-b"><p class="muted small">{{ t('room_empty') }}</p></div>{% endif %}
+    {% if r.neighbors %}<div class="room-foot muted small">↔ {{ r.neighbors|join(', ') }}</div>{% endif %}
   </div>
 {% endfor %}
 </div>

@@ -3,7 +3,7 @@ services:
     build:
       context: .
       target: runtime
-    image: zigbee-placement-advisor:1.0.0
+    image: zigbee-placement-advisor:1.1.0
     container_name: zigbee-placement-advisor
     restart: unless-stopped          # starts again after reboots and crashes
     network_mode: host               # reaches Home Assistant/fritz_exporter on localhost; serves :8099

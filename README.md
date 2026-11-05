@@ -22,7 +22,12 @@ checks this).
 - Detects a newly added router and automatically rates after X days whether it helped (before/after).
 - Checks the Zigbee channel against the 2.4 GHz Wi-Fi channel (via a running
   [fritz_exporter](https://github.com/pdreker/fritz_exporter), or entered manually) and warns on overlap.
-- Web UI: room view, devices, LQI history per device, one-time room setup by clicking.
+  Every reading is stored, so the channel card also shows how often the Wi-Fi channel changed in the last
+  7 days and how much of that time it overlapped. Two or more changes mean the router probably uses automatic
+  channel selection; the card then names the best fixed Wi-Fi channels for your Zigbee channel (largest gap,
+  e.g. 1, then 13/12 for Zigbee 20) and says in plain words what to set in the router.
+- Web UI: room view, devices, LQI history per device, one-time room setup by clicking. Light/dark theme
+  (follows the OS, toggle in the header), works on phones; optional button back to your house dashboard.
 - Weekly HTML report + short Home Assistant notification.
 - Prometheus metrics + Grafana dashboard (`grafana/zigbee-placement-advisor.json`).
 - Self-monitoring: if a Home Assistant/ZHA update changes the API, the token stops working, HA is unreachable
@@ -139,6 +144,15 @@ invalid values stop the start with a clear error message (`docker compose logs`)
 
 ## Web UI
 
+The UI uses a shared "homelab" look (`zpa/static/homelab-theme.css`, tool-specific additions in
+`zpa/static/style.css`). An optional header button leads back to your main dashboard:
+
+```yaml
+ui:
+  home_url: http://dashboard.example.local/   # empty (default) = no button
+  home_label: Dashboard                       # default "Dashboard"
+```
+
 | path | content |
 |---|---|
 | `/` | recommendation, room view, channel check, collection health, before/after |
@@ -168,6 +182,7 @@ Prometheus data source.
 Main metrics: `zpa_device_lqi`, `zpa_device_lqi_median`, `zpa_device_rssi_dbm`, `zpa_device_available`,
 `zpa_device_outages`, `zpa_device_parent_changes`, `zpa_device_weak`, `zpa_link_lqi_median`,
 `zpa_recommendation_devices{room,confidence}`, `zpa_recommendation_status{status}`, `zpa_channel_overlap`,
+`zpa_wifi_channel_changes_7d`,
 `zpa_collector_last_success_timestamp_seconds`, `zpa_collector_failures_total{kind}`, `zpa_open_incidents`.
 
 Alert independently of Home Assistant with e.g.
@@ -176,7 +191,7 @@ Alert independently of Home Assistant with e.g.
 ## Data and retention
 
 `data/zpa.sqlite3` (WAL mode). Every night at 03:xx the previous days are aggregated into daily medians, raw
-data older than `retention.raw_days` (180) and daily values older than `retention.daily_days` (730) are deleted,
+data (including the Wi-Fi channel readings) older than `retention.raw_days` (180) and daily values older than `retention.daily_days` (730) are deleted,
 and the file is vacuumed incrementally. Weekly reports: `data/reports/<YYYY-Www>.html`, the newest
 `reports_keep` (104) are kept.
 

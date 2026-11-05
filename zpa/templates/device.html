@@ -1,31 +1,44 @@
 {% extends "base.html" %}
-{% block title %}{{ d.row.name }} – {{ t('app_title') }}{% endblock %}
+{% from "icons.html" import i %}
+{% block title %}{{ d.row.name }} · {{ t('app_title') }}{% endblock %}
 {% block main %}
-<section class="card">
-  <h2>{{ d.row.name }}</h2>
-  {% set r = d.row_view %}
-  <p>{{ r.room if r else d.row.area }} · {{ r.type if r else d.row.device_type }} · {{ d.row.power_source }} · {{ d.row.manufacturer }} {{ d.row.model }}</p>
-  {% if r %}<p><span class="dot dot-{{ r.cls }}"></span>{{ r.state }} · {{ t('col_lqi_median') }} {{ r.median if r.median is not none else '–' }} · {{ t('col_outages') }} {{ r.outages }} · {{ t('col_parent_changes') }} {{ r.parent_changes }}{% if r.parent %} · {{ t('col_parent') }}: {{ r.parent }}{% endif %}</p>{% endif %}
-  <h3>{{ t('lqi_over_time') }}</h3>
-  <p class="ranges">{{ t('range') }}:
-    {% for n in ranges %}<a href="?days={{ n }}" {% if n == d.days %}aria-current="page"{% endif %}>{{ t('days_n', n=n) }}</a>{% endfor %}
-  </p>
-  {{ d.chart }}
-  <p class="muted small"><span class="legend outage"></span>{{ t('legend_outage') }} <span class="legend sysevent"></span>{{ t('system_event') }} <span class="legend threshold"></span>{{ t('legend_weak') }}</p>
+{% set r = d.row_view %}
+<div class="page-head">
+  <div><div class="kicker"><a class="back" href="/devices">{{ i('back') }}{{ t('dev_back') }}</a></div><h1>{{ d.row.name }}</h1>
+    <p>{{ r.room if r else d.row.area }} · {{ r.type if r else d.row.device_type }} · {{ d.row.power_source }} · {{ d.row.manufacturer }} {{ d.row.model }}</p></div>
+  {% if r %}<div class="actions"><span class="pill {{ r.tone }}"><span class="d"></span>{{ r.state }}</span>{% if r.available == False %}<span class="pill bad"><span class="d"></span>{{ t('unavailable') }}</span>{% endif %}</div>{% endif %}
+</div>
+{% if r %}
+<div class="grid cols-4 kpis">
+  <div class="card tile"><div class="tile-top">{{ t('col_lqi_median') }}</div><div class="tile-val {{ r.lqi_tone }}">{{ r.median if r.median is not none else '–' }}</div><div class="tile-sub">{{ t('col_lqi_last') }}: {{ r.last if r.last is not none else '–' }}</div></div>
+  <div class="card tile"><div class="tile-top">{{ t('col_outages') }}</div><div class="tile-val">{{ r.outages }}</div><div class="tile-sub"></div></div>
+  <div class="card tile"><div class="tile-top">{{ t('col_parent_changes') }}</div><div class="tile-val">{{ r.parent_changes }}</div><div class="tile-sub">{% if r.parent %}{{ t('col_parent') }}: {{ r.parent }}{% endif %}</div></div>
+  <div class="card tile"><div class="tile-top">{{ t('col_samples') }}</div><div class="tile-val">{{ r.samples }}</div><div class="tile-sub"></div></div>
+</div>
+{% endif %}
+<section class="card chart-card">
+  <div class="card-h"><h3>{{ t('lqi_over_time') }}</h3>
+    <div class="aside ranges">{{ t('range') }}:
+      {% for n in ranges %}<a class="btn sm{% if n == d.days %} primary{% endif %}" href="?days={{ n }}" {% if n == d.days %}aria-current="page"{% endif %}>{{ t('days_n', n=n) }}</a>{% endfor %}
+    </div></div>
+  <div class="card-b">
+    {{ d.chart }}
+    <p class="muted small"><span class="legend outage"></span>{{ t('legend_outage') }} <span class="legend sysevent"></span>{{ t('system_event') }} <span class="legend threshold"></span>{{ t('legend_weak') }}</p>
+  </div>
 </section>
-<div class="layout">
-  <section class="card col-main">
-    <h2>{{ t('links') }}</h2>
+<div class="grid cols-2 dev-split">
+  <section class="card">
+    <div class="card-h"><h3>{{ t('links') }}</h3></div>
     {% if d.links %}
-    <table class="small"><thead><tr><th>{{ t('col_neighbor') }}</th><th class="num">LQI</th><th>{{ t('col_relationship') }}</th></tr></thead>
-    <tbody>{% for l in d.links %}<tr><td>{{ l.name }}</td><td class="num">{{ l.lqi }}</td><td>{{ l.relationship }}</td></tr>{% endfor %}</tbody></table>
-    {% else %}<p class="muted">–</p>{% endif %}
+    <div class="card-b flush"><div class="tbl-wrap"><table class="t small"><thead><tr><th>{{ t('col_neighbor') }}</th><th class="num">LQI</th><th>{{ t('col_relationship') }}</th></tr></thead>
+    <tbody>{% for l in d.links %}<tr><td>{{ l.name }}</td><td class="num">{{ l.lqi }}</td><td>{{ l.relationship }}</td></tr>{% endfor %}</tbody></table></div></div>
+    {% else %}<div class="card-b"><p class="muted">–</p></div>{% endif %}
   </section>
-  <section class="card col-side">
-    <h2>{{ t('outage_list') }}</h2>
+  <section class="card">
+    <div class="card-h"><h3>{{ t('outage_list') }}</h3></div>
     {% if d.outages %}
-    <ul>{% for o in d.outages[:50] %}<li{% if not o.real %} class="muted"{% endif %}>{{ o.start }} → {{ o.end }} ({{ o.minutes }} min){% if not o.real %} – {{ t('system_event') }}{% endif %}</li>{% endfor %}</ul>
-    {% else %}<p class="muted">{{ t('no_outages') }}</p>{% endif %}
+    <ul class="rows">{% for o in d.outages[:50] %}<li{% if not o.real %} class="muted"{% endif %}><i class="sd {{ 'bad' if o.real else '' }}"></i><span class="grow">{{ o.start }} → {{ o.end }}{% if not o.real %} – {{ t('system_event') }}{% endif %}</span><span class="small nowrap">{{ o.minutes }} min</span></li>{% endfor %}</ul>
+    {% else %}<div class="card-b"><p class="muted">{{ t('no_outages') }}</p></div>{% endif %}
   </section>
 </div>
 {% endblock %}

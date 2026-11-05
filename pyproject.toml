@@ -1,6 +1,6 @@
 [project]
 name = "zigbee-placement-advisor"
-version = "1.0.0"
+version = "1.1.0"
 description = "Watches Zigbee (ZHA) link quality over weeks and recommends where to place a router"
 requires-python = ">=3.12"
 license = { text = "MIT" }

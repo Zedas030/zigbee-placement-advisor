@@ -147,6 +147,7 @@ class App:
             self.db.set_meta("zigbee_channel", snap.zigbee_channel)
         if wifi:
             self.db.set_meta("wifi_channel", wifi)
+            self.db.add_wifi_reading(now, wifi, snap.zigbee_channel or self.db.get_meta("zigbee_channel"))
         chk = self.channel_check()
         previous = self.db.get_meta("channel_status")
         if chk.status != channels.UNKNOWN and chk.status != previous:
@@ -242,9 +243,52 @@ class App:
     def channel_check(self) -> channels.ChannelCheck:
         return channels.check(self.db.get_meta("zigbee_channel"), self.db.get_meta("wifi_channel"))
 
-    def channel_text(self, chk: channels.ChannelCheck | None = None) -> str:
+    def channel_history(self, now: float | None = None) -> channels.ChannelHistory:
+        now = self.now() if now is None else now
+        since = now - channels.HISTORY_WINDOW
+        return channels.history(self.db.wifi_readings(since), now, zigbee=self.db.get_meta("zigbee_channel"))
+
+    def channel_text(self, chk: channels.ChannelCheck | None = None, hist: channels.ChannelHistory | None = None) -> str:
+        """One plain-text paragraph (notifications, weekly report summary, CLI): state, plus the fix if needed."""
         chk = chk or self.channel_check()
-        return self.t(f"channel_{chk.status}", zigbee=chk.zigbee or "?", wifi=chk.wifi or "?", mhz=chk.distance_mhz)
+        parts = [self.t(f"channel_{chk.status}", zigbee=chk.zigbee or "?", wifi=chk.wifi or "?", mhz=chk.distance_mhz)]
+        if hist is not None and hist.auto:
+            parts.append(self.t("channel_auto", n=hist.changes))
+        if chk.status == channels.OVERLAP or (hist is not None and hist.auto):
+            best = channels.best_wifi_channels(chk.zigbee)
+            if best:
+                parts.append(self.t("channel_fix", wifi=best[0][0]))
+        return " ".join(parts)
+
+    def channel_view(self, now: float | None = None) -> dict:
+        """Everything the channel card shows."""
+        now = self.now() if now is None else now
+        chk = self.channel_check()
+        hist = self.channel_history(now)
+        best = channels.best_wifi_channels(chk.zigbee)
+        needs_fix = chk.status == channels.OVERLAP or hist.auto
+        tone = {channels.OVERLAP: "bad", channels.OK: "warn" if hist.auto else "ok"}.get(chk.status, "")
+        notes = []
+        if hist.auto:
+            notes.append(self.t("channel_auto", n=hist.changes))
+            if hist.last_change is not None and now - hist.last_change > 86400:
+                notes.append(self.t("channel_auto_settled", ago=self.t.ago(now - hist.last_change)))
+        return {
+            "status": chk.status, "tone": tone, "zigbee": chk.zigbee, "wifi": chk.wifi, "mhz": chk.distance_mhz,
+            "headline": self.t(f"channel_{chk.status}", zigbee=chk.zigbee or "?", wifi=chk.wifi or "?",
+                               mhz=chk.distance_mhz),
+            "text": self.channel_text(chk, hist),
+            "auto": hist.auto, "changes": hist.changes, "readings": hist.readings,
+            "channels_seen": hist.channels,
+            "overlap_pct": None if hist.overlap_share is None else round(hist.overlap_share * 100),
+            "since": self.fmt(hist.since) if hist.since is not None else None,
+            "full_window": hist.since is not None and hist.since <= now - channels.HISTORY_WINDOW + 3600,
+            "notes": notes,
+            "best": [{"wifi": w, "mhz": d} for w, d in best] if needs_fix else [],
+            "best_text": self.t("channel_best", zigbee=chk.zigbee, list=", ".join(
+                self.t("channel_best_item", wifi=w, mhz=d) for w, d in best)) if needs_fix and best else "",
+            "fix": self.t("channel_fix", wifi=best[0][0]) if needs_fix and best else "",
+        }
 
     def recommendation_text(self, rec: Recommendation) -> list[str]:
         names = {r["ieee"]: r["name"] for r in self.db.devices(present_only=False)}

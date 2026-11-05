@@ -32,6 +32,7 @@ class Metrics:
         self.zigbee_channel = Gauge("zpa_zigbee_channel", "Zigbee channel", registry=r)
         self.wifi_channel = Gauge("zpa_wifi_channel", "2.4 GHz Wi-Fi channel", registry=r)
         self.channel_status = Gauge("zpa_channel_overlap", "0 ok, 2 overlap, -1 unknown", registry=r)
+        self.wifi_changes = Gauge("zpa_wifi_channel_changes_7d", "Wi-Fi channel changes in the last 7 days", registry=r)
         self.rec_status = Gauge("zpa_recommendation_status", "1 for the current recommendation status", ["status"], registry=r)
         self.rec_room = Gauge("zpa_recommendation_devices", "Weak devices a new router in this room would stabilise", ["room", "confidence"], registry=r)
         self.weak_total = Gauge("zpa_weak_devices", "Number of weak devices", registry=r)
@@ -79,6 +80,7 @@ class Metrics:
         if chk.wifi:
             self.wifi_channel.set(chk.wifi)
         self.channel_status.set(CHANNEL_VALUES[chk.status])
+        self.wifi_changes.set(app.channel_history().changes)
         for s in STATUS_VALUES:
             self.rec_status.labels(status=s).set(int(rec.status == s))
         for c in rec.candidates:

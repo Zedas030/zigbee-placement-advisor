@@ -1,27 +1,44 @@
-{% from "parts.html" import rec_card, side_cards, room_grid, device_table %}<!doctype html>
-<html lang="{{ lang }}">
+{% from "parts.html" import hero, kpis, rec_card, side_cards, room_grid, device_table %}{% from "icons.html" import i %}<!doctype html>
+<html lang="{{ lang }}" data-theme="dark">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
 <title>{{ t('notify_weekly_title') }} {{ week }}</title>
 <style>{{ css|safe }}</style>
+<script>(function(){var t;try{t=localStorage.getItem('hl-theme')}catch(e){}if(t!=='light'&&t!=='dark')t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';document.documentElement.dataset.theme=t})()</script>
 </head>
 <body>
-<header class="top"><div class="brand">{{ t('notify_weekly_title') }} {{ week }}</div><div class="muted">{{ t('report_generated', when=generated) }}</div></header>
-<main>
-<div class="layout">
-  <div class="col-main">
-    {{ rec_card(v) }}
-    <section class="card"><h2>{{ t('nav_rooms') }}</h2>{{ room_grid(v) }}</section>
+<header class="top">
+  <div class="brand"><span class="brand-mark">{{ i('brand') }}</span>
+    <span><span class="brand-name">{{ t('app_title') }}</span><span class="brand-sub">{{ t('app_sub') }}</span></span></div>
+  <div class="top-right">
+    <span class="live"><i class="sd accent"></i>{{ t('report_generated', when=generated) }}</span>
+    <button class="icon-btn" type="button" onclick="(function(){var r=document.documentElement,t=r.dataset.theme==='dark'?'light':'dark';r.dataset.theme=t;try{localStorage.setItem('hl-theme',t)}catch(e){}})()" aria-label="{{ t('theme_toggle') }}" title="{{ t('theme_toggle') }}">{{ i('theme') }}</button>
   </div>
-  <div class="col-side">{{ side_cards(v) }}</div>
+</header>
+<main class="content">
+<div class="page-head">
+  <div><div class="kicker">{{ t('rep_kicker') }}</div><h1>{{ t('notify_weekly_title') }} {{ week }}</h1>
+    <p>{{ t('summary_weak', weak=v.weak_count, total=v.device_count) }} {{ t('summary_outages', n=v.outages_week) }}</p></div>
 </div>
-<section class="card">
-  <h2>{{ t('nav_devices') }}</h2>
-  <p>{{ t('summary_weak', weak=v.weak_count, total=v.device_count) }} {{ t('summary_outages', n=v.outages_week) }}</p>
-  {{ device_table(v, links=False) }}
+{{ hero(v) }}
+{{ kpis(v) }}
+<div class="grid split ov-split">
+  <div class="stack">
+    {{ rec_card(v) }}
+    <section>
+      <div class="sec-h"><h2>{{ t('room_model_title') }}</h2><span class="sub">{{ t('room_model_sub') }}</span></div>
+      {{ room_grid(v, links=False) }}
+    </section>
+  </div>
+  <div class="stack">{{ side_cards(v) }}</div>
+</div>
+<section class="card report-devices">
+  <div class="card-h"><h3>{{ t('nav_devices') }}</h3></div>
+  <div class="card-b flush">{{ device_table(v, links=False) }}</div>
 </section>
+<footer class="foot">{{ t('observe_only') }} · {{ t('app_title') }} {{ version }}</footer>
 </main>
-<footer class="muted">{{ t('observe_only') }}</footer>
 </body>
 </html>

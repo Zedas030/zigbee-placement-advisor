@@ -19,6 +19,8 @@ DEFAULTS: dict[str, Any] = {
     "home_assistant": {"url": "http://localhost:8123", "verify_ssl": True, "timeout_seconds": 30},
     "collector": {"interval_minutes": 30, "history_backfill_days": 10},
     "web": {"host": "0.0.0.0", "port": 8099, "public_url": "http://localhost:8099"},
+    # Optional "back to dashboard" button in the header (empty = no button)
+    "ui": {"home_url": "", "home_label": "Dashboard"},
     "notify": {
         "services": [],
         "weekly_report": {"enabled": True, "weekday": "sunday", "time": "18:00"},
@@ -31,6 +33,7 @@ DEFAULTS: dict[str, Any] = {
         "metric": "fritz_wifi_channel",
         "band_label": "2.4GHz",
         "manual_channel": None,
+        "timeout_seconds": 45,  # fritz_exporter asks the router live on every scrape; 10-30 s is normal
     },
     "thresholds": {
         "analysis_window_days": 14,
@@ -104,6 +107,14 @@ def validate(cfg: dict) -> dict:
     _num(cfg, "collector.history_backfill_days", 0, 60, True)
     _num(cfg, "web.port", 1, 65535, True)
     _num(cfg, "home_assistant.timeout_seconds", 5, 300)
+    _num(cfg, "wifi.timeout_seconds", 2, 300)
+    ui = cfg["ui"]
+    if ui["home_url"] is None:
+        ui["home_url"] = ""
+    if not isinstance(ui["home_url"], str) or (ui["home_url"] and not re.match(r"^https?://", ui["home_url"])):
+        raise ConfigError("ui.home_url must be empty or start with http:// or https://")
+    if not isinstance(ui["home_label"], str) or not ui["home_label"].strip() or len(ui["home_label"]) > 40:
+        raise ConfigError("ui.home_label must be a short text (1..40 characters)")
     services = cfg["notify"]["services"]
     if not isinstance(services, list) or not all(isinstance(s, str) and re.match(r"^[a-z0-9_]+$", s) for s in services):
         raise ConfigError("notify.services must be a list of notify service names like 'mobile_app_phone'")

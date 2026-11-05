@@ -1,26 +1,39 @@
-<!doctype html>
-<html lang="{{ lang }}">
+{% from "icons.html" import i %}<!doctype html>
+<html lang="{{ lang }}" data-theme="dark">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{% block title %}{{ t('app_title') }}{% endblock %}</title>
-<link rel="stylesheet" href="/static/style.css">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><circle cx='8' cy='8' r='3' fill='%232f7d5b'/><circle cx='8' cy='8' r='6.5' fill='none' stroke='%232f7d5b' stroke-width='1.5'/></svg>">
+<meta name="color-scheme" content="light dark">
+<title>{% block title %}{{ t('nav_overview') }} · {{ t('app_title') }}{% endblock %}</title>
+<link rel="stylesheet" href="/static/homelab-theme.css?v={{ version }}">
+<link rel="stylesheet" href="/static/style.css?v={{ version }}">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><circle cx='8' cy='8' r='3' fill='%232dd4bf'/><circle cx='8' cy='8' r='6.5' fill='none' stroke='%232dd4bf' stroke-width='1.5'/></svg>">
+<script>(function(){var t;try{t=localStorage.getItem('hl-theme')}catch(e){}if(t!=='light'&&t!=='dark')t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';document.documentElement.dataset.theme=t})()</script>
 </head>
 <body>
 <header class="top">
-  <div class="brand">{{ t('app_title') }}</div>
-  <nav>
-    <a href="/" {% if page == 'overview.html' %}aria-current="page"{% endif %}>{{ t('nav_overview') }}</a>
-    <a href="/devices" {% if page in ('devices.html', 'device.html') %}aria-current="page"{% endif %}>{{ t('nav_devices') }}</a>
-    <a href="/setup" {% if page == 'setup.html' %}aria-current="page"{% endif %}>{{ t('nav_rooms') }}</a>
-    <a href="/reports" {% if page == 'reports.html' %}aria-current="page"{% endif %}>{{ t('nav_reports') }}</a>
+  <a class="brand" href="/"><span class="brand-mark">{{ i('brand') }}</span>
+    <span><span class="brand-name">{{ t('app_title') }}</span><span class="brand-sub">{{ t('app_sub') }}</span></span></a>
+  <nav class="tabs">
+    <a href="/" {% if page == 'overview.html' %}aria-current="page"{% endif %}>{{ i('overview') }}{{ t('nav_overview') }}</a>
+    <a href="/devices" {% if page in ('devices.html', 'device.html') %}aria-current="page"{% endif %}>{{ i('devices') }}{{ t('nav_devices') }}</a>
+    <a href="/setup" {% if page == 'setup.html' %}aria-current="page"{% endif %}>{{ i('rooms') }}{{ t('nav_rooms') }}</a>
+    <a href="/reports" {% if page == 'reports.html' %}aria-current="page"{% endif %}>{{ i('reports') }}{{ t('nav_reports') }}</a>
   </nav>
+  <div class="top-right">
+    {% if v is defined and v.health is defined %}
+      {% if v.health.incidents %}<span class="live"><i class="sd bad"></i>{{ t('status_problem', n=v.health.incidents|length) }}</span>
+      {% elif v.health.ok %}<span class="live"><i class="sd ok"></i>{{ t('status_live') }}</span>
+      {% else %}<span class="live"><i class="sd warn"></i>{{ t('status_never') }}</span>{% endif %}
+    {% endif %}
+    {% if home_url %}<a class="btn cross home-btn" href="{{ home_url }}" title="{{ home_label }}">{{ i('home') }}<span class="lbl">{{ home_label }}</span></a>{% endif %}
+    <button class="icon-btn" type="button" onclick="(function(){var r=document.documentElement,t=r.dataset.theme==='dark'?'light':'dark';r.dataset.theme=t;try{localStorage.setItem('hl-theme',t)}catch(e){}})()" aria-label="{{ t('theme_toggle') }}" title="{{ t('theme_toggle') }}">{{ i('theme') }}</button>
+  </div>
 </header>
-<main>
+<main class="content">
 {% block main %}{% endblock %}
+<footer class="foot">{{ t('observe_only') }} · {{ t('app_title') }} {{ version }}</footer>
 </main>
-<footer class="muted">{{ t('observe_only') }}</footer>
 {% block scripts %}{% endblock %}
 </body>
 </html>

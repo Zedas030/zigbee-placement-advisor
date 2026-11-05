@@ -1,13 +1,16 @@
 {% extends "base.html" %}
-{% block title %}{{ t('reports_title') }} – {{ t('app_title') }}{% endblock %}
+{% from "icons.html" import i %}
+{% block title %}{{ t('reports_title') }} · {{ t('app_title') }}{% endblock %}
 {% block main %}
+<div class="page-head">
+  <div><div class="kicker">{{ t('rep_kicker') }}</div><h1>{{ t('reports_title') }}</h1><p>{{ t('rep_lead') }}</p></div>
+  <div class="actions"><form method="post" action="/reports/now"><button class="btn primary" type="submit">{{ i('plus') }}{{ t('report_now') }}</button></form></div>
+</div>
 <section class="card">
-  <h2>{{ t('reports_title') }}</h2>
-  <form method="post" action="/reports/now"><button class="button" type="submit">{{ t('report_now') }}</button></form>
-  {% if not rows %}<p class="muted">{{ t('report_none') }}</p>{% endif %}
-  <ul class="reports">
+  {% if not rows %}<div class="card-b"><p class="muted">{{ t('report_none') }}</p></div>{% endif %}
+  <ul class="rows reports">
   {% for r in rows %}
-    <li><a href="/reports/{{ r.week }}">{{ t('report_week', week=r.week) }}</a> <span class="muted">{{ t('report_generated', when=r.when) }}</span><br>{{ r.summary }}</li>
+    <li><span class="ico-sm">{{ i('reports') }}</span><div class="grow"><a href="/reports/{{ r.week }}"><strong>{{ t('report_week', week=r.week) }}</strong></a> <span class="muted small">{{ t('report_generated', when=r.when) }}</span><div class="small rep-sum">{{ r.summary }}</div></div></li>
   {% endfor %}
   </ul>
 </section>
