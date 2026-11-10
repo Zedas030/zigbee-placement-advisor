@@ -1,4 +1,10 @@
-# Zigbee Placement Advisor
+<p align="center">
+  <img src="docs/assets/banner.svg" alt="Zigbee Placement Advisor" width="100%">
+</p>
+
+<p align="center">
+  <a href="#how-it-works">How it works</a>&nbsp;&nbsp;·&nbsp;&nbsp;<a href="#installation">Install</a>&nbsp;&nbsp;·&nbsp;&nbsp;<a href="#secrets">Secrets</a>&nbsp;&nbsp;·&nbsp;&nbsp;<a href="#web-ui">Web UI</a>&nbsp;&nbsp;·&nbsp;&nbsp;<a href="#limitations">Limitations</a>
+</p>
 
 Watches the link quality of a Zigbee network (Home Assistant **ZHA**) over weeks and tells you **where an
 additional router device (for example a Zigbee smart plug) would help**, e.g.
